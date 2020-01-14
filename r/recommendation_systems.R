@@ -4,7 +4,7 @@
 #RECOMMENDATION SYSTEMS
 
 ################################################################################################################################################################
-#1.) Introduction and setup
+#1.) INTRODUCTION AND SETUP
 
 ## In this lesson well
 
@@ -34,7 +34,7 @@ viewed_movies <- as.matrix(viewed_movies[,-1])
 row.names(viewed_movies) <- sorted_my_users
 
 ################################################################################################################################################################
-# 2.) User-based collaborative filtering
+#2.) USER-BASED COLLABORATIVE FILTERING
 ## The basic idea behind user-based collaborative filtering
 
 ##A really simple recommender system would just recommend the most popular movies (that a user hasn't seen before). This information is obtained by summing the 
@@ -177,7 +177,7 @@ lapply(sorted_my_users, user_based_recommendations, user_similarities, viewed_mo
 ##Try to implement this as an exercise.
 
 ################################################################################################################################################################
-# 2.) Item-based collaborative filtering
+#3.) ITEM-BASED COLLABORATIVE FILTERING
 ## The basic idea behind item-based collaborative filtering
 
 ##Item-based collaborative filtering works very similarly to its user-based counterpart, but is a tiny bit less intuitive (in my opinion). It is also based on 
@@ -209,15 +209,12 @@ colnames(movie_similarities) <- colnames(viewed_movies)
 ##We can use the result to see, for example, what movies are most similar to "Apocalypse Now":
 sort(movie_similarities[,"Apocalypse Now (1979)"], decreasing = TRUE)
 
-
 ### Recommending movies for a single user
 
 ##Let's again look at a concrete example of recommending a movie to a particular user, say user 236.
 
 ##User 236 has seen the following movies:
-
 which(viewed_movies["236", ] == 1)
-
 
 ##Another way of doing the same thing:
 ratings_red %>% 
@@ -238,10 +235,8 @@ user_seen <- ratings_red %>%
 user_seen[1]
 movie_similarities[,user_seen[1]]
 
-
 ##We can do the same for each of the four seen movies or, more simply, do all four at once:
 movie_similarities[,user_seen]
-
 
 ##Each movie's recommendation score is obtained by summing across columns, each column representing a seen movie:
 apply(movie_similarities[,user_seen],1,sum)
@@ -301,12 +296,11 @@ item_based_recommendations <- function(user, movie_similarities, viewed_movies){
 ##Let's check that its working with a user we've seen before, user 236:
 item_based_recommendations(user = 236, movie_similarities = movie_similarities, viewed_movies = viewed_movies)
 
-
 ##And now do it for all users with `lapply'
 lapply(sorted_my_users, item_based_recommendations, movie_similarities, viewed_movies)
 
 ################################################################################################################################################################
-#3.) Collaborative filtering with matrix factorization 
+#4.) COLLABORATIVE FILTERING USING MATRIX FACTORIZATION
 
 ##In this section we're going to look at a different way of doing collaborative filtering, one based on the idea of *matrix factorization*, a topic from linear 
 ##algebra.
@@ -321,7 +315,6 @@ lapply(sorted_my_users, item_based_recommendations, movie_similarities, viewed_m
 ##matrices the ratings matrix is decomposed into are *complete* (no blank entries). This gives a straightforward way of filling in blank spaces in the original 
 ##ratings matrix, as we'll see.
 
-
 # get ratings in wide format
 ratings_wide <- ratings_red %>% 
   select(userId, title, rating) %>% 
@@ -335,7 +328,6 @@ row.names(ratings_wide) <- sorted_my_users
 
 # save as csv for Excel demo
 write.csv(ratings_wide,"output/ratings_for_excel_example.csv")
-
 
 ##Now let's set up the same computations in R, which will be faster and easier to generalise beyond a particular size dataset. We start by defining a function 
 ##that will compute the sum of squared differences between the observed movie ratings and any other set of predicted ratings (for example, ones predicted by 
@@ -399,7 +391,6 @@ rbind(round(predicted_ratings[1,], 1), as.numeric(ratings_wide[1,]))
 ##We first rewrite the *evaluate_fit* function to make use of L2 regularization:
 
 ## adds L2 regularization, often improves accuracy
-
 evaluate_fit_l2 <- function(x, observed_ratings, lambda){
   
   # extract user and movie factors from parameter vector
@@ -422,7 +413,6 @@ evaluate_fit_l2 <- function(x, observed_ratings, lambda){
 }
 
 ##We now rerun the optimization with this new evaluation function:
-
 set.seed(10)
 # optimization step
 rec2 <- optim(par = runif(175), evaluate_fit_l2, 
@@ -517,11 +507,12 @@ data.frame(movies = colnames(viewed_movies), bias = movie_bias[1,]) %>% arrange(
 # check predictions for one user
 rbind(round(predicted_ratings[1,], 1), as.numeric(ratings_wide[1,]))
 
-## Exercises
+################################################################################################################################################################
+#5.) NOTES
 
-##There are a few places in the notebook where an exercise is indicated. Specifically:
-  
 ##1. Adapt the pairwise similarity function so that it doesn't use loops.
 ##2. Implement a k-nearest-neighbours version of item-based collaborative filtering.
 ##3. Adapt the `recommender_accuracy()` function so that it can be used with an arbitrary number of users and movies.
 ##4. Experiment with the optimizers used in the matrix factorization collaborative filter.
+
+################################################################################################################################################################
