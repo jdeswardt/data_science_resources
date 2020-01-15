@@ -118,7 +118,7 @@ user_scores <- user_scores %>%
                filter(seen == 0) %>% 
                arrange(desc(score)) 
 
-#2.3) FUNCTION TO CREATE RECOMMENDATIONS FOR ANY USER
+#2.3) FUNCTION TO CREATE USER-BASED RECOMMENDATIONS FOR ANY USER
 
 ##Function to generate User-based Collaborative Filtering recommendations for any user
 user_based_recommendations <- function(user, user_similarities, viewed_movies){
@@ -158,11 +158,13 @@ View(recommendation_user_149)
 
 # transpose the viewed_movies matrix
 movies_user <- t(viewed_movies)
+size <- nrow(movies_user)
+size2 <- size - 1
 
 # get all similarities between MOVIES
-movie_similarities = matrix(0, nrow=20, ncol=20)
-for (i in 1:19) {
-  for (j in (i + 1):20) {
+movie_similarities = matrix(0, nrow=size, ncol=size)
+for (i in 1:size2) {
+  for (j in (i + 1):size) {
     movie_similarities[i,j] <- cosine_sim(viewed_movies[,i], viewed_movies[,j])
   }
 }
@@ -174,7 +176,7 @@ colnames(movie_similarities) <- colnames(viewed_movies)
 ##We can use the result to see, for example, what movies are most similar to "Apocalypse Now":
 sort(movie_similarities[,"Apocalypse Now (1979)"], decreasing=TRUE)
 
-### Recommending movies for a single user
+#3.2) UNDERSTANDING RECOMMENDATION
 
 ##Let's again look at a concrete example of recommending a movie to a particular user, say user 236.
 
@@ -182,19 +184,18 @@ sort(movie_similarities[,"Apocalypse Now (1979)"], decreasing=TRUE)
 which(viewed_movies["236", ] == 1)
 
 ##Another way of doing the same thing:
-ratings_red %>% 
-  filter(userId == 236) %>% 
-  select(userId, title)
+ratings_red %>% filter(userId == 236) %>% 
+                select(userId, title)
 
 ##We now implement the main idea behind item-based filtering. For each movie, we find the similarities between that movie and each of the four movies user 236 
 ##has seen, and sum up those similarities. The resulting sum is that movie's "recommendation score".
 
 ##We start by identifying the movies the user has seen:
 user_seen <- ratings_red %>% 
-  filter(userId == 236) %>% 
-  select(title) %>% 
-  unlist() %>% 
-  as.character()
+             filter(userId == 236) %>% 
+             select(title) %>% 
+             unlist() %>% 
+             as.character()
 
 ##We then compute the similarities between all movies and these "seen" movies. For example, similarities for the first seen movie, *Taxi Driver* are:
 user_seen[1]
@@ -218,48 +219,25 @@ user_scores %>%
 
 ##So we'd end up recommending "Minority Report" to this particular user.
 
-##Let's repeat the process to generate a recommendation for one more user, user 149:
-
-# do for user 149
-user <- "149"
-user_seen <- ratings_red %>% 
-  filter(userId == user) %>% 
-  select(title) %>% 
-  unlist() %>% 
-  as.character()
-
-user_scores <- tibble(title = row.names(movie_similarities), 
-                      score = apply(movie_similarities[,user_seen],1,sum),
-                      seen = viewed_movies[user,])
-
-user_scores %>% 
-  filter(seen == 0) %>% 
-  arrange(desc(score))
-
-### A simple function to generate an item-based CF recommendation for any user
+#3.3) FUNCTION TO CREATE ITEM-BASED RECOMMENDATIONS FOR ANY USER
 
 # a function to generate an item-based recommendation for any user
 item_based_recommendations <- function(user, movie_similarities, viewed_movies){
   
-  # turn into character if not already
   user <- ifelse(is.character(user), user, as.character(user))
   
-  # get scores
   user_seen <- row.names(movie_similarities)[viewed_movies[user,] == TRUE]
   user_scores <- tibble(title = row.names(movie_similarities), 
                         score = apply(movie_similarities[,user_seen], 1, sum),
                         seen = viewed_movies[user,])
   
-  # sort unseen movies by score and remove the 'seen' column
-  user_scores %>% 
-    filter(seen == 0) %>% 
-    arrange(desc(score)) %>% 
-    select(-seen)
-  
+  user_scores %>% filter(seen == 0) %>% 
+                  arrange(desc(score)) %>% 
+                  select(-seen)
 }
 
 ##Let's check that its working with a user we've seen before, user 236:
-item_based_recommendations(user = 236, movie_similarities = movie_similarities, viewed_movies = viewed_movies)
+item_based_recommendations(user=236, movie_similarities=movie_similarities, viewed_movies=viewed_movies)
 
 ##And now do it for all users with `lapply'
 #lapply(sorted_my_users, item_based_recommendations, movie_similarities, viewed_movies)
