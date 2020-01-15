@@ -6,71 +6,67 @@
 ################################################################################################################################################################
 #1.) INTRODUCTION AND SETUP
 
-## In this lesson well
+##Introduce recommendation systems in the form of collaborative filtering:
+###User-Based collaborative filering
+###Item-Based collaborative filtering
+###Collaborative filtering using Matrix Factorization
 
-##1. introduce recommender systems based on collaborative filtering
-##2. build recommender systems based on various kinds of collaborative filtering
-##    + user-based collaborative filtering
-##    + item-based collaborative filtering
-##    + matrix factorization
-##3. introduce L2 regularization and bias terms, two ways of improving recommender systems based on matrix factorization.
-##4. use these approaches to build a system for recommending movies to users based on their past viewing habits.
+##This work lends heavily on the following resources:
+###Chapter 22 of Joel Grus' ["Data Science from Scratch: First Principles with Python"](http://shop.oreilly.com/product/0636920033400.do)
+###Python code from is [here](https://github.com/joelgrus/data-science-from-scratch)
+###Part of [Lesson 4](http://course.fast.ai/lessons/lesson4.html) of the fast.ai course "Practical Deep Learning for Coders"
+###Python code is [here](https://github.com/fastai/courses/tree/master/deeplearning1)
 
-##This notebook is based quite closely on the following sources:
+##Data
+###The data used for this tutorial is a small subset obtained from the Movielens data set
+###The idea is therefore to build recommendation systems from using Movies and Movies watchers
+###The watchers will be referred to as users and the movies will be referred to as items
 
-##* Chapter 22 of Joel Grus' ["Data Science from Scratch: First Principles with Python"](http://shop.oreilly.com/product/0636920033400.do). 
-##The (Python) code from the book is [here](https://github.com/joelgrus/data-science-from-scratch).
-##* Part of [Lesson 4](http://course.fast.ai/lessons/lesson4.html) of the fast.ai course "Practical Deep Learning for Coders". 
-##There's a timeline of the lesson [here](http://wiki.fast.ai/index.php/Lesson_4_Timeline). 
-##Code (also in Python) is [here](https://github.com/fastai/courses/tree/master/deeplearning1). 
-
-### Load required packages and the dataset we created last lesson
+##Load required packages and the dataset we created last lesson
 library(tidyverse)
-load("output/recommender.RData")
+load("/Users/jdeswardt/Documents/GitHub/data_science_repository/data/recommendation_systems.RData")
 
-##We need to convert the data to matrix form otherwise some of the later functions we use will give an error (see what happens if you dont make the change).
+##We need to convert the data to matrix form otherwise some of the later functions we use will give an error
 sorted_my_users <- as.character(unlist(viewed_movies[,1]))
 viewed_movies <- as.matrix(viewed_movies[,-1])
 row.names(viewed_movies) <- sorted_my_users
 
 ################################################################################################################################################################
 #2.) USER-BASED COLLABORATIVE FILTERING
-## The basic idea behind user-based collaborative filtering
 
-##A really simple recommender system would just recommend the most popular movies (that a user hasn't seen before). This information is obtained by summing the 
-##values of each column of *viewed movies*:
+##The most basic form of a recommendations system, is one where the most popular item is recommended to all users:
 sort(apply(viewed_movies, 2, sum), decreasing=TRUE)
 
-##This approach has an intuitive appeal but is pretty unsophisticated (everyone gets the same recommendations, barring the filtering out of seen movies!) In 
-##other words, everyone's vote counts the same. User-based CF extends the approach by changing how much each person's vote counts. Specifically, when recommending what I should watch next, a user-based CF 
-##system will upweight the votes of people that are "more similar" to me. In this context "similar" means "has seen many of the same movies as me". You can think 
-##of this as replacing the 1's in the *viewed_movies* matrix with a number that increases with similarity to the user we're trying to recommend a movie to.
-##There are lots of different similarity measures. The one we'll use is called cosine similarity and is widely used, but search online for others and try them out.
+##With this approach eeveryone gets the same recommendation, after filtering out movies which that user has seen already.
+##In this case each users vote counts the same. 
+##User-based collaborative filtering extends the approach by changing how much each person's vote counts. 
+##The system upweights the votes of people that are most similar to me. In this context similar means has seen many of the same movies as me. 
+##You can think of this as replacing the 1's in the *viewed_movies* matrix with a number that increases with similarity to the user we're trying to recommend a movie to.
+##There are various kinds of similarity measures, one of the most popular is cosine similarity, which we will make use of.
                                                                                  
-
-# function calculating cosine similarity
+##Function calculating cosine similarity (Dot product)
 cosine_sim <- function(a, b){crossprod(a, b) / sqrt(crossprod(a) * crossprod(b))}
 
-#Cosine similarity lies between 0 and 1 inclusive and increases with similarity. Here are a few test cases to get a feel for it:
+##The cosine similarity measure lies between zero and one, the more similar the higher the value.
                                                                                    
-# maximally similar
+##Maximally similar
 x1 <- c(1, 1, 1, 0, 0)
 x2 <- c(1, 1, 1, 0, 0)
 cosine_sim(x1, x2)
 
-# maximally dissimilar
+##Maximally dissimilar
 x1 <- c(1, 1, 1, 0, 0)
 x2 <- c(0, 0, 0, 1, 1)
 cosine_sim(x1, x2)
 
-# but also
+##Also
 x1 <- c(1, 1, 0, 0, 0)
 x2 <- c(0, 0, 0, 1, 1)
 cosine_sim(x1, x2)
                                                                                  
-# try an example from our data
-as.numeric(viewed_movies[1,]) # user 1's viewing history
-as.numeric(viewed_movies[2,]) # user 2's viewing history
+##Calculate the cosine similarity between user 1 and user 2 from the data
+as.numeric(viewed_movies[1,])
+as.numeric(viewed_movies[2,])
 cosine_sim(viewed_movies[1,], viewed_movies[2,])
                                                                                  
 ##Let's get similarities between user pairs. We'll do this with a loop below, because it's easier to see what's going on, but this will be inefficient and very 
@@ -78,13 +74,15 @@ cosine_sim(viewed_movies[1,], viewed_movies[2,])
 user_similarities <- matrix(0, nrow=15, ncol=15)
 for (i in 1:14) {
   for (j in (i + 1):15) {
-    user_similarities[i,j] <- cosine_sim(viewed_movies[i,], viewed_movies[j,])
+    user_similarities[i, j] <- cosine_sim(viewed_movies[i,], viewed_movies[j,])
+ }
 }
-}
+
 user_similarities <- user_similarities + t(user_similarities)
 diag(user_similarities) <- 0
 row.names(user_similarities) <- row.names(viewed_movies)
 colnames(user_similarities) <- row.names(viewed_movies)
+View(user_similarities)
 
 # who are the most similar users to user 149?
 user_similarities["149",]
@@ -99,7 +97,6 @@ viewed_movies[c("149","303","236"),]
 
 ##First, we need to know what movies have they already seen (so we don't recommend these).
 viewed_movies["149",]
-
 
 ##The basic idea is now to recommend what's popular by adding up the number of users that have seen each movie, but *to weight each user by their similarity to 
 ##user 149*. 
