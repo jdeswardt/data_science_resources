@@ -22,9 +22,13 @@
 ###The idea is therefore to build recommendation systems from using Movies and Movies watchers
 ###The watchers will be referred to as users and the movies will be referred to as items
 
-##Load required packages and the dataset we created last lesson
+##Load required packages
 library(tidyverse)
+
+##Load dataset and view data
 load("/Users/jdeswardt/Documents/GitHub/data_science_repository/data/recommendation_systems.RData")
+View(ratings_red)
+View(viewed_movies)
 
 ##We need to convert the data to matrix form otherwise some of the later functions we use will give an error
 sorted_my_users <- as.character(unlist(viewed_movies[,1]))
