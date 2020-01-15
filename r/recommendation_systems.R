@@ -40,14 +40,12 @@ sort(apply(viewed_movies, 2, sum), decreasing=TRUE)
 ##In this case each users vote counts the same. 
 ##User-based collaborative filtering extends the approach by changing how much each person's vote counts. 
 ##The system upweights the votes of people that are most similar to me. In this context similar means has seen many of the same movies as me. 
-##You can think of this as replacing the 1's in the *viewed_movies* matrix with a number that increases with similarity to the user we're trying to recommend a movie to.
 ##There are various kinds of similarity measures, one of the most popular is cosine similarity, which we will make use of.
                                                                                  
 ##Function calculating cosine similarity (Dot product)
 cosine_sim <- function(a, b){crossprod(a, b) / sqrt(crossprod(a) * crossprod(b))}
 
 ##The cosine similarity measure lies between zero and one, the more similar the higher the value.
-                                                                                   
 ##Maximally similar
 x1 <- c(1, 1, 1, 0, 0)
 x2 <- c(1, 1, 1, 0, 0)
@@ -68,26 +66,27 @@ as.numeric(viewed_movies[1,])
 as.numeric(viewed_movies[2,])
 cosine_sim(viewed_movies[1,], viewed_movies[2,])
                                                                                  
-##Let's get similarities between user pairs. We'll do this with a loop below, because it's easier to see what's going on, but this will be inefficient and very 
-##slow for bigger datasets. As an exercise, see if you can do the same without loops.
-user_similarities <- matrix(0, nrow=15, ncol=15)
-for (i in 1:14) {
-  for (j in (i + 1):15) {
+##Create a similarity matrix using a loop to calculate similarity scores between all users
+size <- nrow(viewed_movies)
+size2 <- size - 1
+
+user_similarities <- matrix(0, nrow=size, ncol=size)
+for (i in 1:size2) {
+  for (j in (i + 1):size) {
     user_similarities[i, j] <- cosine_sim(viewed_movies[i,], viewed_movies[j,])
  }
 }
-
 user_similarities <- user_similarities + t(user_similarities)
 diag(user_similarities) <- 0
 row.names(user_similarities) <- row.names(viewed_movies)
 colnames(user_similarities) <- row.names(viewed_movies)
-View(user_similarities)
 
-# who are the most similar users to user 149?
+##Check who are the most similar to "User 149"
 user_similarities["149",]
                                                                                  
-##Let's see if this makes sense from the viewing histories. Below we show user 149's history, together with the user who is most similar to user 149 (user 303) 
-##and another user who is very dissimilar (user 236).
+##The most similar is "User 303"
+##The most dissimilar is "User 236"
+##Lets check if this makes sense according to viewed movies
 viewed_movies[c("149","303","236"),]
 
 #2.2) UNDERSTANDING RECOMMENDATION                                                                       
@@ -144,7 +143,7 @@ View(recommendation_user_149)
 
 ################################################################################################################################################################
 #3.) ITEM-BASED COLLABORATIVE FILTERING
-## The basic idea behind item-based collaborative filtering
+#3.1) UNDERSTANDING SIMILARITY
 
 ##Item-based collaborative filtering works very similarly to its user-based counterpart, but is a tiny bit less intuitive (in my opinion). It is also based on 
 ##similarities, but similarities between *movies* rather than *users*.
@@ -161,7 +160,7 @@ View(recommendation_user_149)
 movies_user <- t(viewed_movies)
 
 # get all similarities between MOVIES
-movie_similarities = matrix(0, nrow = 20, ncol = 20)
+movie_similarities = matrix(0, nrow=20, ncol=20)
 for (i in 1:19) {
   for (j in (i + 1):20) {
     movie_similarities[i,j] <- cosine_sim(viewed_movies[,i], viewed_movies[,j])
@@ -173,7 +172,7 @@ row.names(movie_similarities) <- colnames(viewed_movies)
 colnames(movie_similarities) <- colnames(viewed_movies)
 
 ##We can use the result to see, for example, what movies are most similar to "Apocalypse Now":
-sort(movie_similarities[,"Apocalypse Now (1979)"], decreasing = TRUE)
+sort(movie_similarities[,"Apocalypse Now (1979)"], decreasing=TRUE)
 
 ### Recommending movies for a single user
 
@@ -263,7 +262,7 @@ item_based_recommendations <- function(user, movie_similarities, viewed_movies){
 item_based_recommendations(user = 236, movie_similarities = movie_similarities, viewed_movies = viewed_movies)
 
 ##And now do it for all users with `lapply'
-lapply(sorted_my_users, item_based_recommendations, movie_similarities, viewed_movies)
+#lapply(sorted_my_users, item_based_recommendations, movie_similarities, viewed_movies)
 
 ################################################################################################################################################################
 #4.) COLLABORATIVE FILTERING USING MATRIX FACTORIZATION
