@@ -30,14 +30,9 @@ load("/Users/jdeswardt/Documents/GitHub/data_science_repository/data/recommendat
 View(ratings_red)
 View(viewed_movies)
 
-##We need to convert the data to matrix form otherwise some of the later functions we use will give an error
-sorted_my_users <- as.character(unlist(viewed_movies[,1]))
-viewed_movies <- as.matrix(viewed_movies[,-1])
-row.names(viewed_movies) <- sorted_my_users
-
 ################################################################################################################################################################
 #2.) USER-BASED COLLABORATIVE FILTERING
-
+#2.1) UNDERSTANDING SIMILARITY
 ##The most basic form of a recommendations system, is one where the most popular item is recommended to all users:
 sort(apply(viewed_movies, 2, sum), decreasing=TRUE)
 
@@ -94,85 +89,55 @@ user_similarities["149",]
 ##Let's see if this makes sense from the viewing histories. Below we show user 149's history, together with the user who is most similar to user 149 (user 303) 
 ##and another user who is very dissimilar (user 236).
 viewed_movies[c("149","303","236"),]
-                                                                                 
-### Recommending movies for a single user
-##As an example, let's consider the process of recommending a movie to one user, say user 149. How would we do this with a user-based collaborative filtering 
-##system? 
 
-##First, we need to know what movies have they already seen (so we don't recommend these).
+#2.2) UNDERSTANDING RECOMMENDATION                                                                       
+
+##Recommend a item to a single user (User 149)
+##First check which movies User 149 has already viewed
 viewed_movies["149",]
 
-##The basic idea is now to recommend what's popular by adding up the number of users that have seen each movie, but *to weight each user by their similarity to 
-##user 149*. 
-
-##Let's work through the calculations for one movie, say Apocalypse Now (movie 2). The table below shows who's seen Apocalypse Now, and how similar each person 
-##is to user 149.
+##From the list of viewed movies for "User 149" it is clear that they haven't seen "Apocalypse Now".
+##Lets see who otherwise has seen "Apocalypse Now" and their overall similarity score with "User 149"
+##In order to recommend a movie we look at two parts, who else has seen that movie and what is their simlarity score
 seen_movie <- viewed_movies[,"Apocalypse Now (1979)"]
 sim_to_user <- user_similarities["149",]
-cbind(seen_movie,sim_to_user)
+cbind(seen_movie, sim_to_user)
 
-##The basic idea in user-based collaborative filtering is that user 236's vote counts less than user 408's, because user 408 is more similar to user 149 (in 
-##terms of viewing history). 
-
-##Note that this only means user 408 counts more in the context of making recommendations to user 149. When recommending to users *other than user 149*, user 236 
-##may carry more weight.
-
-##We can now work out an overall recommendation score for Apocalypse Now by multiplying together the two elements in each row of the table above, and summing 
-##these products (taking the dot product):
-
-
-# overall score for Apocalypse now
+##From the output above the idea is that "User 236" vote counts less than "User 408" because "User 408" is more similar to our target "User 149"
+##Now to recommend a movie we need to add the number of users that have seen each movie, and weight each user by their similarity to "User 149"
+##To calculate a recommendation score for "Apocalypse Now" for "User 149" we multiply together each row in table above and sum these products (Dot product)
 crossprod(viewed_movies[, "Apocalypse Now (1979)"], user_similarities["149",])
 
-##Note this score will increase with (a) the number of people who've seen the movie (more 1's in the first column above) and (b) if the people who've seen it are 
-##similar to user 1
-##Let's repeat this calculation for all movies and compare recommendation scores:
+##Calculate the recommendation scores for "User 149" for all movies
 user_similarities["149",] %*% viewed_movies
 
-##To come up with a final recommendation, we just need to remember to remove movies user 149 has already seen, and sort the remaining movies in descending order 
-##of recommendation score.
-
-##We do that below, after tidying up the results a bit by putting them in a data frame.
+##For a final recommendation, remove movies that the "User 149" has already seen and sort the recommendation scores in descending order
 user_scores <- data.frame(title=colnames(viewed_movies), 
                           score=as.vector(user_similarities["149",] %*% viewed_movies), 
                           seen=viewed_movies["149",])
-user_scores %>% filter(seen == 0) %>% arrange(desc(score)) 
+user_scores <- user_scores %>% 
+               filter(seen == 0) %>% 
+               arrange(desc(score)) 
 
-##Now that we've understood the calculations, let's get recommendations for one more user, user 236:
+#2.3) FUNCTION TO CREATE RECOMMENDATIONS FOR ANY USER
 
-# recommendations for user 236
-user_scores <- data.frame(title = colnames(viewed_movies), 
-                          score = as.vector(user_similarities["236",] %*% viewed_movies), 
-                          seen = viewed_movies["236",])
-user_scores %>% filter(seen == 0) %>% arrange(desc(score)) 
-
-### A simple function to generate a user-based CF recommendation for any user
-
-# a function to generate a recommendation for any user
+##Function to generate User-based Collaborative Filtering recommendations for any user
 user_based_recommendations <- function(user, user_similarities, viewed_movies){
-  
-  # turn into character if not already
+                                
   user <- ifelse(is.character(user), user, as.character(user))
-  
-  # get scores
+                                
   user_scores <- data.frame(title = colnames(viewed_movies), 
                             score = as.vector(user_similarities[user,] %*% viewed_movies), 
                             seen = viewed_movies[user,])
-  
-  # sort unseen movies by score and remove the 'seen' column
-  user_scores %>% 
-    filter(seen == 0) %>% 
-    arrange(desc(score)) %>% 
-    select(-seen)
-  
+                                
+  user_scores %>% filter(seen == 0) %>% 
+                  arrange(desc(score)) %>% 
+                  select(-seen)
 }
 
-##Let's check the function is working by running it on a user we've used before:
-user_based_recommendations(user=149, user_similarities=user_similarities, viewed_movies=viewed_movies)
-
-##Now do it for all users with `lapply`:
-lapply(sorted_my_users, user_based_recommendations, user_similarities, viewed_movies)
-
+##Create recommendations using function for "User 149"
+recommendation_user_149 <- user_based_recommendations(user=149, user_similarities=user_similarities, viewed_movies=viewed_movies)
+View(recommendation_user_149)
 
 ##A variant on the above is a *k-nearest-neighbours* approach that bases recommendations *only on k most similar users*. This is faster when there are many users. 
 ##Try to implement this as an exercise.
