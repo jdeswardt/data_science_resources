@@ -293,20 +293,17 @@ recommendation_accuracy <- function(x, observed_ratings){
 ##We have now defined a function that calculates the the RMSE of the optimization problem
 ##We'll now optimize the values in the user and movie latent factors, choosing them so that the root mean square error is a minimum. 
 ##I've done this using R's inbuilt numerical optimizer `optim()`, with the default "Nelder-Mead" method. 
-
-##Optimize
 set.seed(10)
 recommendation <- optim(par=runif(V_dim), recommendation_accuracy, observed_ratings=ratings_wide, control=list(maxit=1000000))
 recommendation$value
+##The best value found by the objective function using optim() after 1 million iterations is 0.0669
+##Note the optimization has not converged, try different optimizers.
 
-##The best value of the objective function found by `optim()` after 100000 iterations is 0.258, but note that it hasn't converged yet, so we should really run 
-##for longer or try another optimizer! Ignoring this for now, we can extract the optimal user and movie factors. 
-
-##User factors
+##User factors created through optimization
 user_factors <- matrix(recommendation$par[1:75], 15, 5)
 View(user_factors)
 
-##Item factors
+##Item factors created through optimization
 item_factors <- matrix(recommendation$par[76:175], 5, 20)
 View(item_factors)
 
