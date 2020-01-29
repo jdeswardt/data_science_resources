@@ -297,7 +297,6 @@ recommendation_accuracy <- function(x, observed_ratings){
 ##Optimize
 set.seed(10)
 recommendation <- optim(par=runif(V_dim), recommendation_accuracy, observed_ratings=ratings_wide, control=list(maxit=1000000))
-recommendation$convergence
 recommendation$value
 
 ##The best value of the objective function found by `optim()` after 100000 iterations is 0.258, but note that it hasn't converged yet, so we should really run 
@@ -311,9 +310,7 @@ View(user_factors)
 item_factors <- matrix(recommendation$par[76:175], 5, 20)
 View(item_factors)
 
-##Most importantly, we can get **predicted movie ratings** for any user, by taking the appropriate dot product of user and movie factors. Here we show the 
-##predictions for user 1:
-# check predictions for one user
+##We can now get the predicted ratings for all combinations by taking the dot product
 predicted_ratings <- user_factors %*% item_factors
 row.names(predicted_ratings) <- row.names(viewed_movies)
 colnames(predicted_ratings) <- colnames(viewed_movies)
