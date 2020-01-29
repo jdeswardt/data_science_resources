@@ -246,17 +246,12 @@ View(item_based_recommendation_149)
 
 ##In this section we're going to look at a different way of doing collaborative filtering using matrix factorization.
 ##Matrix factorization is a idea from linear algebra also referred to as matrix decomposition
-##This method takes a matrix and represents it as a product of other (usually two) matrices
+##This method takes a matrix and represents it as a product of two matrices
 
 ##In this example we will use the ratings given to movies as our user-item matrix
-##We will decompose the ratings matrix into the product of two matrices. 
-##This is done in such a way that the known ratings are matched as closely as possible
-
-##The key feature of matrix factorization for recommendation systems is that while the ratings matrix is incomplete (i.e. some entries are blank), the two 
-##matrices the ratings matrix is decomposed into are *complete* (no blank entries). 
-##This gives a straightforward way of filling in blank spaces in the original ratings matrix, as we'll see.
-##We use the ratings_red dataframe and use user-movie ratings instead of one-hot encoding for watched
-
+##This user-item matrix is incomplete as not all users have seen all moveies
+##By decomposing this matrix into two complete matrices by matching the know ratings as closely as possibly by minimizing a RMSE
+##We can use these complete matrices to fill the missing values
 
 ##Get ratings into wide format and create rownames as user ids
 ratings_wide <- ratings_red %>% 
@@ -269,9 +264,9 @@ ratings_wide <- as.matrix(ratings_wide[,-1])
 row.names(ratings_wide) <- sorted_my_users
 View(ratings_wide)
 
-##We start by defining a function that will compute the sum of squared differences between the observed movie ratings and any other set of predicted ratings 
-##(for example, ones predicted by matrix factorization). 
-##Note that we only count movies that have already been rated in the accuracy calculation.
+##We start by creating function that will help us in our optimization problem
+##We create a function that calculates the Root Mean Square Error between the observed movie ratings and the predicted movie ratings
+##This calculation only applies to where there are observed ratings
 
 ##Initialize variables for funtion based on the desired number of latent factors d
 d <- 5
@@ -283,48 +278,43 @@ V_dim <- U_dim + (d * items)
 
 recommendation_accuracy <- function(x, observed_ratings){
     
-  # extract user and movie factors from parameter vector (note x is defined such that 
-  # the first 75 elements are latent factors for users and rest are for movies)
+  ##Extract user and item factors
   U <- matrix(x[1:U_dim], users, d)
   V <- matrix(x[V_dim_start:V_dim], d, items)
   
-  # get predictions from dot products of respective user and movie factor
+  ##Get predictions from dot products of respective user and movie factor
   R <- U %*% V
   
-  # model accuracy is sum of squared errors over all rated movies
+  ##Calculate the RMSE
   errors <- (observed_ratings - R)^2 
-  
-  sqrt(mean(errors[!is.na(observed_ratings)]))   # only use rated movies
+  sqrt(mean(errors[!is.na(observed_ratings)]))
 }
 
-##We'll now optimize the values in the user and movie latent factors, choosing them so that the root mean square error (the square root of the average squared 
-##difference between observed and predicted ratings) is a minimum. I've done this using R's inbuilt numerical optimizer `optim()`, with the default "Nelder-Mead" 
-##method. There are better ways to do this - experiment! Always check whether the optimizer has converged (although you can't always trust this), see 
-##`help(optim)` for details.
+##We have now defined a function that calculates the the RMSE of the optimization problem
+##We'll now optimize the values in the user and movie latent factors, choosing them so that the root mean square error is a minimum. 
+##I've done this using R's inbuilt numerical optimizer `optim()`, with the default "Nelder-Mead" method. 
 
 ##Optimize
 set.seed(10)
-recommendation <- optim(par=runif(V_dim), recommendation_accuracy, observed_ratings=ratings_wide, control=list(maxit=100000))
+recommendation <- optim(par=runif(V_dim), recommendation_accuracy, observed_ratings=ratings_wide, control=list(maxit=1000000))
 recommendation$convergence
 recommendation$value
 
 ##The best value of the objective function found by `optim()` after 100000 iterations is 0.258, but note that it hasn't converged yet, so we should really run 
-##for longer or try another optimizer! Ignoring this for now, we can extract the optimal user and movie factors. With a bit of work, these can be interpreted 
-##and often give useful information. Unfortunately we don't have time to look at this further (although it is similar to the interpretation of principal 
-##components, if you are familiar with that).
+##for longer or try another optimizer! Ignoring this for now, we can extract the optimal user and movie factors. 
 
 ##User factors
-user_factors <- matrix(rec1$par[1:75], 15, 5)
+user_factors <- matrix(recommendation$par[1:75], 15, 5)
 View(user_factors)
 
 ##Item factors
-item_factors <- matrix(rec1$par[76:175], 5, 20)
+item_factors <- matrix(recommendation$par[76:175], 5, 20)
 View(item_factors)
 
 ##Most importantly, we can get **predicted movie ratings** for any user, by taking the appropriate dot product of user and movie factors. Here we show the 
 ##predictions for user 1:
 # check predictions for one user
-predicted_ratings <- user_factors %*% movie_factors
+predicted_ratings <- user_factors %*% item_factors
 row.names(predicted_ratings) <- row.names(viewed_movies)
 colnames(predicted_ratings) <- colnames(viewed_movies)
 View(predicted_ratings)
@@ -332,9 +322,7 @@ View(predicted_ratings)
 ##Compare predicted rating with actual ratings for "User 149"
 rbind(round(predicted_ratings["149",], 1), as.numeric(ratings_wide["149",]))
 
-##To recommend a movie to a user is intuitive from this step onwards
 ##We now recommend movies based on the highest ranking movies the user has not seen
-##We can examine and interpret the user or movie latent factors, or bias terms, if we want to
 ##Create a function to generate matrix factorization recommendations for any user
 mf_recommendations <- function(user, predicted_ratings, viewed_movies){
   
@@ -349,7 +337,7 @@ mf_recommendations <- function(user, predicted_ratings, viewed_movies){
                   select(-seen)
 }
 
-##Create recommendations using function for "User 149"
+##Create recommendations using the function for "User 149"
 mf_recommendation_149 <- mf_recommendations(user=149, predicted_ratings=predicted_ratings, viewed_movies=viewed_movies)
 View(mf_recommendation_149)
 
