@@ -40,7 +40,8 @@ sort(apply(viewed_movies, 2, sum), decreasing=TRUE)
 ##With this approach everyone gets the same recommendation, after filtering out movies which that user has seen already
 ##In this case each users vote counts the same
 ##User-based collaborative filtering extends this approach by changing how much each person's vote counts
-##The system upweights the votes of people that are most similar to me. In this context similar means has seen many of the same movies as me
+##The system upweights the votes of people that are most similar 
+##In this context similar means has seen many of the same movies
 ##There are various kinds of similarity measures, one of the most popular is cosine similarity, which we will make use of
                                                                                  
 ##Function calculating cosine similarity (Dot product)
@@ -63,7 +64,7 @@ x2 <- c(0, 0, 0, 1, 1)
 cosine_sim(x1, x2)
                                                                                  
 ##Calculate the cosine similarity between user 1 and user 2 from the data
-cosine_sim(viewed_movies[1,], viewed_movies[2,])
+cosine_sim(viewed_movies["149",], viewed_movies["177",])
                                                                                  
 ##Create a similarity matrix using a loop to calculate similarity scores between all users
 size <- nrow(viewed_movies)
@@ -146,7 +147,7 @@ user_based_recommendation_149 <- user_based_recommendations(user=149, user_simil
 View(user_based_recommendation_149)
 
 ##Use lapply to create recommendations for all users (NOT WORKING)
-lapply(sorted_my_users, user_based_recommendations, user_similarities, viewed_movies)
+#lapply(sorted_my_users, user_based_recommendations, user_similarities, viewed_movies)
 
 ################################################################################################################################################################
 #3.) ITEM-BASED COLLABORATIVE FILTERING
@@ -191,21 +192,21 @@ viewed_movies["149",]
 user_seen <- row.names(item_similarities)[viewed_movies["149",] == TRUE]
 
 ##We now implement the main idea behind item-based filtering. 
-##For each movie, we find the similarities between that movie and each of the four movies user 236 has seen, and sum up those similarities. 
+##For each movie, we find the similarities between that movie and each of the five movies "User 149" has seen, and sum up those similarities. 
 ##The resulting sum is that movie's "recommendation score".
 
 ##We start by identifying the movies the user has seen:
-##We then compute the similarities between all movies and these "seen" movies. For example, similarities for the first seen movie, *Taxi Driver* are:
+##We then compute the similarities between all movies and these "seen" movies.
 user_seen[1]
 item_similarities[,user_seen[1]]
 
-##We can do the same for each of the four seen movies or, more simply, do all four at once:
+##We can do the same for each of the five seen movies or, more simply, do all five at once:
 item_similarities[,user_seen]
 
 ##Each movie's recommendation score is obtained by summing across columns, each column representing a seen movie:
 apply(item_similarities[,user_seen], 1, sum)
 
-##The preceding explanation hopefully makes the details of the calculations clear, but it is quite unwieldy. We can do all the calculations more neatly as:
+##The calculations above can be done as follows
 user_scores <- data.frame(title=colnames(viewed_movies), 
                           score=apply(item_similarities[,user_seen], 1, sum),
                           seen=viewed_movies["149",])
@@ -223,7 +224,7 @@ item_based_recommendations <- function(user, item_similarities, viewed_movies){
   
   user <- ifelse(is.character(user), user, as.character(user))
   
-  user_seen <- row.names(item_similarities)[viewed_movies[user,]==TRUE]
+  user_seen <- row.names(item_similarities)[viewed_movies[user,] == TRUE]
   
   user_scores <- data.frame(title=row.names(item_similarities), 
                             score=apply(item_similarities[,user_seen], 1, sum),
@@ -297,7 +298,7 @@ set.seed(10)
 recommendation <- optim(par=runif(V_dim), recommendation_accuracy, observed_ratings=ratings_wide, control=list(maxit=1000000))
 recommendation$value
 ##The best value found by the objective function using optim() after 1 million iterations is 0.0669
-##Note the optimization has not converged, try different optimizers.
+##Note the optimization has not converged. 
 
 ##User factors created through optimization
 user_factors <- matrix(recommendation$par[1:75], 15, 5)
