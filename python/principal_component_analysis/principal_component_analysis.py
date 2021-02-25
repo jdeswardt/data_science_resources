@@ -119,11 +119,16 @@ state = df_us_arrests['state']
 loadings = pca.components_.T * numpy.sqrt(pca.explained_variance_)
 
 ##Create scatter object
-biplot = plotly.express.scatter(data_frame=principal_components,
-                                x=0,
-                                y=1,
+biplot = plotly.express.scatter(data_frame=df_prin_comp,
+                                x='principal_component_1',
+                                y='principal_component_2',
                                 text=state,
-                                title='Biplot for US arrests data')
+                                title='Biplot for US arrests data',
+                                labels={'principal_component_1': 'PC1',
+                                        'principal_component_2': 'PC2'})
+
+##Adjust data labels
+biplot.update_traces(textposition='top center')
 
 ##Add vectors to plot
 for i, feature in enumerate(features):
